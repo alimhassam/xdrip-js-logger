@@ -12,7 +12,7 @@
   "dependencies": {
     "xdrip-js": "xdrip-js/xdrip-js#dev"
   },
-    "repository": {
+  "repository": {
     "type": "git",
     "url": "git://github.com/xdrip-js/Logger.git"
   },
@@ -28,5 +28,3 @@
     }
   }
 }
-
-

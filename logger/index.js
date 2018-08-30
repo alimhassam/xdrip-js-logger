@@ -107,6 +107,33 @@ function SensorStateString(state) {
 
 const transmitter = new Transmitter(id, () => messages); 
 
+transmitter.on('glucosebackfill', glucose => {
+  console.log('got glucosebackfill: ' + glucose.glucose);
+  var d= new Date(glucose.readDate);
+
+  console.log(util.inspect(glucose, false, null))
+  var fs = require('fs');
+  const entry = [{
+      'device': 'DexcomR4',
+      'date': glucose.readDate,
+      'dateString': new Date(glucose.readDate).toISOString(),
+      //'sgv': Math.round(glucose.unfiltered/1000),
+      'sgv': glucose.glucose,
+      'direction': 'None',
+      'type': 'sgv',
+      'trend': glucose.trend,
+      'state': SensorStateString(glucose.state), 
+      'glucose': Math.round(glucose.glucose)
+    }];
+    const data = JSON.stringify(entry);
+
+    fs.readFile('/root/myopenaps/monitor/logger/entry-backfill2.json', function (err, data) {
+        var json = JSON.parse(data)
+        json.push(entry)
+
+        fs.writeFile('/root/myopenaps/monitor/logger/entry-backfill2.json', JSON.stringify(json))
+    });
+});
 transmitter.on('glucose', glucose => {
   //console.log('got glucose: ' + glucose.glucose);
   var d= new Date(glucose.readDate);
@@ -149,7 +176,7 @@ transmitter.on('glucose', glucose => {
 
 transmitter.on('batteryStatus', data => {
   const util = require('util')
-  console.log('got batteryStatus message inside logger msg: ' + data);
+  console.log('got batteryStatus message inside logger msg: ' + JSON.stringify(data));
   console.log(util.inspect(data, false, null))
 
 //  status: 0,
@@ -172,7 +199,7 @@ transmitter.on('batteryStatus', data => {
 transmitter.on('disconnect', process.exit);
 
 transmitter.on('messageProcessed', data => {
-  console.log('got message inside logger msg: ' + data);
+  console.log('got message inside logger msg: ' + JSON.stringify(data));
   console.log(util.inspect(data, false, null))
 });
 

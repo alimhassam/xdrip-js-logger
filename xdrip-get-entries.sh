@@ -33,7 +33,7 @@ main()
 
   initialize_messages
   check_environment
-  check_utc
+  #check_utc
 
   check_last_glucose_time_smart_sleep
 
@@ -88,8 +88,8 @@ main()
   # necessary for not-expired mode - ok for both modes 
   cp ${LDIR}/entry.json ${LDIR}/entry-xdrip.json
 
-  process_delta # call for all modes 
-  calculate_noise # necessary for all modes
+  #process_delta # call for all modes 
+  #calculate_noise # necessary for all modes
 
   fake_meter
 
@@ -411,6 +411,7 @@ function initialize_messages()
   startJSON=""
   batteryJSON=""
   resetJSON=""
+  backfillJSON=""
 }
 
 function compile_messages()
@@ -449,6 +450,12 @@ function compile_messages()
   if [ "${resetJSON}" != "" ]; then
     tmp=$(mktemp)
     echo "${resetJSON}" > $tmp
+    files="$files $tmp"
+  fi
+
+  if [ "${backfillJSON}" != "" ]; then
+    tmp=$(mktemp)
+    echo "${backfillJSON}" > $tmp
     files="$files $tmp"
   fi
   
@@ -523,7 +530,7 @@ function  set_glucose_type()
 
 function set_mode()
 {
-  mode="expired"
+  mode="not-expired"
   if [[ "$status" == "OK" || "$status" == "Low battery" ]]; then 
     mode="not-expired"
     if [[ "$state" == "Stopped" ]]; then
@@ -548,6 +555,7 @@ function set_mode()
   fi
   # to hard-code or test expired mode, uncomment below line
   #mode="expired"
+  mode="not-expired"
 }
 
 function  initialize_calibrate_bg()
@@ -1069,7 +1077,7 @@ function wait_with_echo()
 
 function check_last_glucose_time_smart_sleep()
 {
-  file="${LDIR}/entry.json"
+  file="${LDIR}/last-entry.json"
   if [ -e $file ]; then
     entry_timestamp=$(date -r $file +'%s')
     seconds_since_last_entry=$(bc <<< "$epochdate - $entry_timestamp")
@@ -1079,7 +1087,14 @@ function check_last_glucose_time_smart_sleep()
     if [ $(bc <<< "$sleep_time > 0") -eq 1 -a $(bc <<< "$sleep_time < 240") -eq 1 ]; then
       log "Waiting $sleep_time seconds because glucose records only happen every 5 minutes"
       wait_with_echo $sleep_time
+    elif [ $(bc <<< "$sleep_time < -300") -eq 1 ]; then
+      backfill_start=$(date "+%s%3N" -d @"$entry_timestamp")
+      log "Requesting backfill since $backfill_start"
+      backfillJSON="[{\"date\":\"${backfill_start}\",\"type\":\"Backfill\"}]"
     fi
+      backfill_start=$(date "+%s%3N" -d @"$entry_timestamp")
+      log "Requesting backfill since $backfill_start"
+      backfillJSON="[{\"date\":\"${backfill_start}\",\"type\":\"Backfill\"}]"
   else
     log "More than 4 minutes since last glucose entry, continue processing without waiting"
   fi
